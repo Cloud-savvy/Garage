@@ -1,3 +1,5 @@
+![Git Logo](https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png)
+
 # Git Cheat Codes  
 
 This repository contains a collection of essential Git commands for easy reference.  
@@ -38,4 +40,4 @@ GitHub offers several tools to enhance your Git workflow:
 - **GitHub Pages** – Host static websites directly from your repository.  
 - **GitHub CLI** – Command-line tool for interacting with GitHub.  
 
-Feel free to contribute and add more useful Git commands! 🚀  
+
