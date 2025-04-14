@@ -3,9 +3,9 @@
 VPC >>> 2 Public subnets >>> 4 Private subnets >>> 5 Security Groups 
 		|- Web1		|- App1			|- External-ALB-SG (external Load Balancer --- Port: 80 --- Source: 0.0.0.0)
 		|- Web2		|- App2			|- Internal-ALB-SG (Internal Load Balancer --- Port: 80 --- Source: VPCs CIDR Range 192.168.0.0/22)
-				      |- DB1			|- Web-SG (web app --- Port: 80 --- Source: External-ALB-SG)
-				      |- DB2			|- App-SG (App1 --- Port: 4000 --- Source: VPCs CIDR Range 192.168.0.0/22)
-							            |- RDS-SG (DB1 --- Port: 3306 --- Source: VPCs CIDR Range 192.168.0.0/22
+				|- DB1			|- Web-SG (web app --- Port: 80 --- Source: External-ALB-SG)
+				|- DB2			|- App-SG (App1 --- Port: 4000 --- Source: VPCs CIDR Range 192.168.0.0/22)
+							|- RDS-SG (DB1 --- Port: 3306 --- Source: VPCs CIDR Range 192.168.0.0/22
 
 
 2.Creating the S3 bucket and IAM Role
@@ -20,50 +20,50 @@ I am first uploading the code into S3 bucket and from there I'll get the code in
 - create an IAM role
 		|- Roles 
 	     	     |- AWS service >>> Use case --- EC2 
-					      	                            |- Policy name --- AmazonEC2RoleforSSM 
-											                                                          |- Role name --- 3-Tier-EC2-Role
+					      	       |- Policy name --- AmazonEC2RoleforSSM 
+								                            |- Role name --- 3-Tier-EC2-Role
 
 3.DataBase configuration
 ========================
 - First we need to create a subnet group	
-				                        |- Name >>> Description >>> VPC >>> Add subnets >>> Add AZ >>> Create
+				|- Name >>> Description >>> VPC >>> Add subnets >>> Add AZ >>> Create
 
 - Dashboard
 	|- DB Creation Method --- Standard create
-           					                    |- Engine option--- MySQL 
-						                            |- Engine version --- MySQL 8.0.35 (Go for 2 Versions behind the latest one) 					  		  	   		
+           				|- Engine option--- MySQL 
+					|- Engine version --- MySQL 8.0.35 (Go for 2 Versions behind the latest one) 					  		  	   		
                                         |- Templates --- Free Tier
-						                            --------
-						                            SETTINGS
-						                            -------- 
-						                            |- DB instance identifier --- database-1 
-						                            -------------------
-						                            Credential Settings
-						                            -------------------
-						                            |- Master username --- admin 
-						                            |- Credential management --- Self managed
-						                            |- QuickGun --- Password (Enter and Confirm)
-						                            ----------------------
-						                            Instance Configuration
-						                            ---------------------- 
-						                            |- Burstable classes --- db.t4g.micro
-						                            -------
-						                            Storage
-						                            -------
-						                            |- Storage type --- General Purpose SSD (gp2)
-						                            |- Allocated storage --- 20
-						                            ------------
-						                            Connectivity
-						                            ------------
-						                            |- VPC --- 3-Tier-Architecture-VPC
-						                            |- Subnet group --- db-sngp
-						                            |- VPC security group >>> Existing VPC SG --- RDS-SG
-						                            ------------------------
-						                            Additional Configuration
-						                            ------------------------
-						                            |- DB parameter group --- default.mysql8.0
-						                            |- Option group --- default:mysql-8-0
-						                            |- Create database
+					--------
+				        SETTINGS
+					-------- 
+				        |- DB instance identifier --- database-1 
+					-------------------
+					Credential Settings
+					-------------------
+					|- Master username --- admin 
+					|- Credential management --- Self managed
+					|- QuickGun --- Password (Enter and Confirm)
+					----------------------
+					Instance Configuration
+					---------------------- 
+					|- Burstable classes --- db.t4g.micro
+					-------
+					Storage
+					-------
+					|- Storage type --- General Purpose SSD (gp2)
+					|- Allocated storage --- 20
+					------------
+					Connectivity
+					------------
+					|- VPC --- 3-Tier-Architecture-VPC
+					|- Subnet group --- db-sngp
+					|- VPC security group >>> Existing VPC SG --- RDS-SG
+					------------------------
+					Additional Configuration
+					------------------------
+					|- DB parameter group --- default.mysql8.0
+					|- Option group --- default:mysql-8-0
+					|- Create database
 
 
 4.Application Tier Setup
