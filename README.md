@@ -1,4 +1,5 @@
-![Git Logo](https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png)
+<img src="https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png" width="32" alt="Git Icon">
+
 
 # Git Cheat Codes  
 
