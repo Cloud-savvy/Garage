@@ -1,0 +1,213 @@
+1.VPC Creation
+==============
+VPC >>> 2 Public subnets >>> 4 Private subnets >>> 5 Security Groups 
+		|- Web1		|- App1			|- External-ALB-SG (external Load Balancer --- Port: 80 --- Source: 0.0.0.0)
+		|- Web2		|- App2			|- Internal-ALB-SG (Internal Load Balancer --- Port: 80 --- Source: VPCs CIDR Range 192.168.0.0/22)
+				      |- DB1			|- Web-SG (web app --- Port: 80 --- Source: External-ALB-SG)
+				      |- DB2			|- App-SG (App1 --- Port: 4000 --- Source: VPCs CIDR Range 192.168.0.0/22)
+							            |- RDS-SG (DB1 --- Port: 3306 --- Source: VPCs CIDR Range 192.168.0.0/22
+
+
+2.Creating the S3 bucket and IAM Role
+=====================================  
+Here I am using S3 bucket to store the (code) 3 tire application since it is a complex task to upload the code into the EC2 instances 
+I am first uploading the code into S3 bucket and from there I'll get the code into the EC2 instance
+
+# Get the code from the GitHub repo to your local machine:
+----------------------------------------------------------
+- git clone https://github.com/Cloud-savvy/3TierArchitectureApp.git 
+- once after cloning you will find the folder "application-code" upload the folder into S3 bucket 
+- create an IAM role
+		|- Roles 
+	     	     |- AWS service >>> Use case --- EC2 
+					      	                            |- Policy name --- AmazonEC2RoleforSSM 
+											                                                          |- Role name --- 3-Tier-EC2-Role
+
+3.DataBase configuration
+========================
+- First we need to create a subnet group	
+				                        |- Name >>> Description >>> VPC >>> Add subnets >>> Add AZ >>> Create
+
+- Dashboard
+	|- DB Creation Method --- Standard create
+           					                    |- Engine option--- MySQL 
+						                            |- Engine version --- MySQL 8.0.35 (Go for 2 Versions behind the latest one) 					  		  	   		
+                                        |- Templates --- Free Tier
+						                            --------
+						                            SETTINGS
+						                            -------- 
+						                            |- DB instance identifier --- database-1 
+						                            -------------------
+						                            Credential Settings
+						                            -------------------
+						                            |- Master username --- admin 
+						                            |- Credential management --- Self managed
+						                            |- QuickGun --- Password (Enter and Confirm)
+						                            ----------------------
+						                            Instance Configuration
+						                            ---------------------- 
+						                            |- Burstable classes --- db.t4g.micro
+						                            -------
+						                            Storage
+						                            -------
+						                            |- Storage type --- General Purpose SSD (gp2)
+						                            |- Allocated storage --- 20
+						                            ------------
+						                            Connectivity
+						                            ------------
+						                            |- VPC --- 3-Tier-Architecture-VPC
+						                            |- Subnet group --- db-sngp
+						                            |- VPC security group >>> Existing VPC SG --- RDS-SG
+						                            ------------------------
+						                            Additional Configuration
+						                            ------------------------
+						                            |- DB parameter group --- default.mysql8.0
+						                            |- Option group --- default:mysql-8-0
+						                            |- Create database
+
+
+4.Application Tier Setup
+========================
+- Launch AWS EC2 Linux2 instance and attach IAM users >>> Launch
+- Connect with the terminal login as root user --- sudo su --- cd /home/ec2-user
+
+4.1 Configure database in the Instance
+======================================
+* Here we do App server setup and database configuration
+* Let's install MySQL
+* First install MySQL client
+- sudo yum update -y && sudo yum install mysql -y
+
+* Once MySQL client setup is done we will have to configure the MySQL database
+- Configure MySQL Database
+  
+  Connect to the database and perform basic configuration: Replace below info with your DB information
+  ----------------------------------------------------------------------------------------------------
+  mysql -h <DB Endpoint> -u admin -p
+  Enter the Password ******* (If you couldn't connect, there is a problem with the SG of the DB)
+  
+  mysql -h database-1.cm7goeauw5hy.us-east-1.rds.amazonaws.com -u admin -p
+  Enter the Password QuickGun
+
+- We will be able to connect to the DB
+
+* Lets create our own Database The database name I'm creating is "webappdb" (This is same name that you should give in DbConfig.js file)
+- CREATE DATABASE webappdb;
+- SHOW DATABASES;
+- USE webappdb;
+
+* Execute the below code as a single code. 
+* Here we are creating a table with the name 'transactions'
+- CREATE TABLE IF NOT EXISTS transactions(
+    id INT NOT NULL AUTO_INCREMENT, 
+    amount DECIMAL(10,2), 
+    description VARCHAR(100), 
+    PRIMARY KEY(id)
+  );
+
+* To verify whether table got created or not;
+- SHOW TABLES;
+
+* Insert a sample information into the table
+- INSERT INTO transactions (amount, description) VALUES ('400', 'groceries');
+
+* To verify whether the entry is really created or not
+- SELECT * FROM transactions; --- (You will see the info you have written)
+- exit (If everything is working fine the out of the webappdb) 
+
+* application-code/app-tier/DbConfig.js (file with your database credentials)
+    module.exports = Object.freeze({
+      DB_HOST : 'database-1.cm7goeauw5hy.us-east-1.rds.amazonaws.com',
+      DB_USER : 'admin',
+      DB_PWD : 'QuickGun',
+      DB_DATABASE : 'webappdb'
+    });
+
+- Upload the updated DbConfig.js in S3
+
+* Lets install and configure node.js and pm2
+- curl -o- https://raw.githubusercontent.com/avizway1/aws_3tier_architecture/main/install.sh | bash 
+  source ~/.bashrc
+
+* Install nvm (Node Version Manager)
+- nvm install 16
+  nvm use 16 (You will see 'Now using node v16.20.2)
+
+* To run node as a service, we need to install pm2
+- npm install -g pm2 (You will see 'found 0 vulnerabilities)
+
+* Download application code from S3 and start the application
+- cd ~/
+- sudo aws s3 cp s3://<S3BucketName>/application-code/app-tier/ app-tier --recursive
+
+  sudo aws s3 cp s3://3-tier-application-project/application-code/app-tier/ app-tier --recursive
+
+- ls >>> app-tier
+- cd app-tier/ 
+- npm install
+- ls >>> index.js (We need to start that) 
+- pm2 start index.js (You will see the status as online)
+
+* To verify;
+- pm2 list (or) pm2 status
+- pm2 logs (You will not see anything in red colour, everything in white colour you should see)
+- http://localhost:4000 (At the end you will see something like)
+- pm2 startup
+- pm2 save (To save the configuration)
+
+* Verify that the application is running by executing
+- curl http://localhost:4000/health
+- It should return: This is the health check
+* With this we have completed the application configuration.
+
+4.2. Creation of Internal Load Balancer for App Tier
+====================================================
+- First create Target groups
+- Create Load balancer
+- Update the nginx.conf file by replacing DNS of LB
+- Upload the updated nginx.conf file to the S3 bucket 
+
+5.Creation of Web tier resources including External Load Balancer
+=================================================================
+- sudo -su ec2-user (To work as an ec2-user)
+- cd /home/ec2-user
+- curl -o- https://raw.githubusercontent.com/avizway1/aws_3tier_architecture/main/install.sh | bash
+- source ~/.bashrc
+- nvm install 16
+- nvm use 16
+- aws s3 cp s3://<S3 Bucker Name>/application-code/web-tier/ web-tier --recursive
+
+  aws s3 cp s3://3-tier-application-project/application-code/web-tier/ web-tier --recursive
+  
+- ls >>> web-tier
+- cd web-tier
+- npm install
+- npm run build
+
+- sudo amazon-linux-extras install nginx1 -y
+* Update Nginx configuration:
+- cd /etc/nginx (Your are in nginx path)
+- ls >>> nginx.conf
+- sudo rm nginx.conf
+- sudo aws s3 cp s3://<S3 Bucker Name>/application-code/nginx.conf .
+  sudo aws s3 cp s3://3-tier-application-project/application-code/nginx.conf .
+- sudo service nginx restart
+- chmod -R 755 /home/ec2-user
+- sudo chkconfig nginx on
+
+- Change the SG for Web-Tier-Instance port: 80 Source: 0.0.0.0/0
+
+-----------------------------------------------------------------------------------
+Delete everything once its done
+First delete ASG
+Next delete both LBs
+Next delete both TGs
+Next delete both AMIs
+Next delete both Snapshots of AMIs
+Next delete DB
+Next delete S3 Bucket
+Next delete Certificate
+Next delete Route 53 record
+Next delete NAT GW
+Next delete Elastic IP. This came because of NATGW
+Next delete VPC
