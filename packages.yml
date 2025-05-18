@@ -1,0 +1,85 @@
+---
+- name: Install Java 17, Maven, Docker, Jenkins on Ubuntu 22.04
+  hosts: all
+  become: true
+  tasks:
+    - name: Cleanup old Docker repo (if exists)
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/docker.list
+        state: absent
+
+    - name: Cleanup old Docker GPG keys (if exists)
+      ansible.builtin.file:
+        path: /usr/share/keyrings/docker-archive-keyring.gpg
+        state: absent
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Java 17
+      ansible.builtin.apt:
+        name: openjdk-17-jdk
+        state: present
+
+    - name: Install Maven
+      ansible.builtin.apt:
+        name: maven
+        state: present
+
+    - name: Install prerequisites for Docker
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /usr/share/keyrings/docker-archive-keyring.gpg
+        state: present
+
+    - name: Add Docker repo
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable"
+        state: present
+        filename: docker
+
+    - name: Update apt cache after Docker repo
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker-ce
+        state: present
+
+    - name: Add Jenkins GPG key
+      ansible.builtin.apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins.io.key
+        state: present
+
+    - name: Add Jenkins repo
+      ansible.builtin.apt_repository:
+        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+        filename: jenkins
+
+    - name: Update apt cache after Jenkins repo
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      ansible.builtin.apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins
+      ansible.builtin.service:
+        name: jenkins
+        state: started
+        enabled: yes
